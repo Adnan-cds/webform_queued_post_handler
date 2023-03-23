@@ -9,7 +9,7 @@ After submitting a webform, the queued items should appear in the queue table, a
 ## Notes
 
 ### Testing / Debugging
-For testing the Completed/Updated/Deleted urls, if you enable the webform examples module, the following urls will be available:
+For testing the Completed/Updated/Deleted urls, if you enable the "Webform Remote Post Example" module, the following urls will be available:
 
  * <site>/webform_example_remote_post/completed
  * <site>/webform_example_remote_post/updated
