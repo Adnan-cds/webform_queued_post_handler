@@ -1,0 +1,41 @@
+<?php
+
+/**
+ * @file
+ * Contains webform_queued_post_handler.module.
+ *
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Entity\EntityInterface;
+
+/**
+ * Implements hook_help().
+ */
+function webform_queued_post_handler_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the webform_queued_post_handler module.
+    case 'help.page.webform_queued_post_handler':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Provides an asynchronous remote post handler that uses the Drupal queue API.') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function webform_queued_post_handler_theme() {
+  // This (and templates/webform-handler-async-remote-post-summary.html.twig) was copied directly 
+  // from the webform module in order to provide a "Summary" in the Email / Handlers section for this handler.
+  $info = [
+    'webform_handler_async_remote_post_summary' => [
+      'variables' => ['settings' => NULL, 'handler' => NULL],
+    ],
+  ];
+
+  return $info;
+}

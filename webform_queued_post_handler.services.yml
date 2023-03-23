@@ -1,0 +1,6 @@
+services:
+  logger.channel.webform_queued_post_handler:
+    class: Drupal\Core\Logger\LoggerChannel
+    factory: logger.factory:get
+    arguments:
+      - 'webform_queued_post_handler'

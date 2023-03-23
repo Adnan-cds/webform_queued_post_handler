@@ -1,0 +1,7 @@
+name: Cyberwoven Webform Queued Post Handler
+type: module
+description: 'Provides an asynchronous remote post handler that uses the Drupal queue API'
+package: Cyberwoven
+core_version_requirement: ^9 || ^10
+dependencies:
+  - webform

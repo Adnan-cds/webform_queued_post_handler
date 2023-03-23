@@ -1,0 +1,15 @@
+{
+  "name": "cyberwoven/webform_queued_post_handler",
+  "type": "drupal-module",
+  "description": "This module extends the Webform module's Remote Post Webform Handler plugin to make remote posts asynchronous using Drupal Queue API.",
+  "keywords": ["Drupal", "Webform"],
+  "homepage": "https://bitbucket.org/cyberwoven/webform_queued_post_handler",
+  "license": "GPL-2.0+",
+  "minimum-stability": "dev",
+  "support": {
+    "source": "https://bitbucket.org/cyberwoven/webform_queued_post_handler.git"
+  },
+  "require": {
+    "drupal/core": "^9.0 || ^10.0"
+  }
+}
