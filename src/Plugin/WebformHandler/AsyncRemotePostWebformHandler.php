@@ -2,12 +2,9 @@
 
 namespace Drupal\webform_queued_post_handler\Plugin\WebformHandler;
 
-use Drupal\Component\Utility\Html;
-use Drupal\Core\Serialization\Yaml;
-use Drupal\Core\Url;
 use Drupal\webform\Plugin\WebformHandler\RemotePostWebformHandler;
 use Drupal\webform\WebformSubmissionInterface;
-use GuzzleHttp\Exception\RequestException;
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Queue\DelayedRequeueException;
 
 /**
@@ -25,6 +22,45 @@ use Drupal\Core\Queue\DelayedRequeueException;
  * )
  */
 class AsyncRemotePostWebformHandler extends RemotePostWebformHandler {
+
+  /**
+   * {@inheritdoc}
+   *
+   * Alterations:
+   * - Declares the retry_upon_failure settings.
+   */
+  public function defaultConfiguration() {
+
+    $default_config = parent::defaultConfiguration();
+
+    $default_config['retry_upon_failure'] = FALSE;
+
+    return $default_config;
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * Alterations:
+   * - Disables the error URL settings.  An async handler achieves nothing
+   *   by redirecting to an error URL.
+   * - Adds settings field for Retry upon failure.
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
+
+    $config_form = parent::buildConfigurationForm($form, $form_state);
+
+    $config_form['additional']['error_url']['#disabled'] = TRUE;
+
+    $config_form['additional']['retry_upon_failure'] = [
+      '#type'          => 'radio',
+      '#title'         => $this->t('Retry upon failure'),
+      '#description'   => $this->t('What to do when a remote POST fails.'),
+      '#default_value' => $this->configuration['retry_upon_failure'],
+    ];
+
+    return $config_form;
+  }
 
   /**
    * {@inheritdoc}
@@ -55,16 +91,11 @@ class AsyncRemotePostWebformHandler extends RemotePostWebformHandler {
    * Helper function to add an item to the queue.
    *
    * @param int $sid
-   *   The subimssion id
-   *
+   *   The submission id.
    * @param string $handler_id
-   *   The webform handler id
-   *
-   * @param string $state_id
+   *   The webform handler id.
+   * @param string $state
    *   The webform state we are handling (Completed/Updated/Deleted).
-   *
-   * @param \Drupal\webform\WebformSubmissionInterface $webform_submission
-   *   A webform submission.
    */
   public function addQueueItem($sid, $handler_id, $state) {
     if (!empty($sid)) {
@@ -75,8 +106,9 @@ class AsyncRemotePostWebformHandler extends RemotePostWebformHandler {
       $item = [
         'webform_submission_id' => $sid,
         'handler_id' => $handler_id,
-        // Will prob only ever handle "completed" states, but let's store this just in case we want to queue updated as well.
-        'state' => $state
+        // Will prob only ever handle "completed" states, but let's store this
+        // just in case we want to queue updated as well.
+        'state' => $state,
       ];
 
       $queue->createItem($item);
@@ -88,7 +120,6 @@ class AsyncRemotePostWebformHandler extends RemotePostWebformHandler {
    *
    * @param string $state
    *   The submission's state.
-   *
    * @param \Drupal\webform\WebformSubmissionInterface $webform_submission
    *   A webform submission.
    */
@@ -105,76 +136,21 @@ class AsyncRemotePostWebformHandler extends RemotePostWebformHandler {
 
   /**
    * {@inheritdoc}
-   * This is overridden so that we can catch errors and rethrow in order for failed queue items to be retried in the future.
+   *
+   * This is overridden so that we can raise an exception in order for failed
+   * queued items to be retried in the future.
    */
-  // protected function remotePost($state, WebformSubmissionInterface $webform_submission) {
-  //   $state_url = $state . '_url';
-  //   if (empty($this->configuration[$state_url])) {
-  //     return;
-  //   }
+  protected function handleError($state, $message, $request_url, $request_method, $request_type, $request_options, $response) {
 
-  //   $this->messageManager->setWebformSubmission($webform_submission);
+    // An async handler achieves nothing by redirecting to an error URL.
+    // The error URL settings field has been already disabled in
+    // self::buildConfigurationForm().  We reset it here in case the error URL
+    // has been edited in the webform config.
+    $this->configuration['error_url'] = '';
 
-  //   $request_url = $this->configuration[$state_url];
-  //   $request_url = $this->replaceTokens($request_url, $webform_submission);
-  //   $request_method = (!empty($this->configuration['method'])) ? $this->configuration['method'] : 'POST';
-  //   $request_type = ($request_method !== 'GET') ? $this->configuration['type'] : NULL;
+    parent::handleError($state, $message, $request_url, $request_method, $request_type, $request_options, $response);
 
-  //   // Get request options with tokens replaced.
-  //   $request_options = (!empty($this->configuration['custom_options'])) ? Yaml::decode($this->configuration['custom_options']) : [];
-  //   $request_options = $this->replaceTokens($request_options, $webform_submission);
+    throw new \Exception();
+  }
 
-  //   try {
-  //     if ($request_method === 'GET') {
-  //       // Append data as query string to the request URL.
-  //       $query = $this->getRequestData($state, $webform_submission);
-  //       $request_url = Url::fromUri($request_url, ['query' => $query])->toString();
-  //       $response = $this->httpClient->get($request_url, $request_options);
-  //     }
-  //     else {
-  //       $method = strtolower($request_method);
-  //       $request_options[($request_type === 'json' ? 'json' : 'form_params')] = $this->getRequestData($state, $webform_submission);
-  //       $response = $this->httpClient->$method($request_url, $request_options);
-  //     }
-  //   }
-  //   catch (RequestException $request_exception) {
-  //     $response = $request_exception->getResponse();
-
-  //     // Encode HTML entities to prevent broken markup from breaking the page.
-  //     $message = $request_exception->getMessage();
-  //     $message = nl2br(htmlentities($message));
-
-  //     $this->handleError($state, $message, $request_url, $request_method, $request_type, $request_options, $response);
-  //     throw $request_exception;
-  //   }
-
-  //   // Display submission exception if response code is not 2xx.
-  //   if ($this->responseHasError($response)) {
-  //     $message = $this->t('Remote post request return @status_code status code.', ['@status_code' => $response->getStatusCode()]);
-  //     $this->handleError($state, $message, $request_url, $request_method, $request_type, $request_options, $response);
-  //     throw $request_exception;
-  //   }
-  //   else {
-  //     $this->displayCustomResponseMessage($response, FALSE);
-  //   }
-
-  //   // If debugging is enabled, display the request and response.
-  //   $this->debug($this->t('Remote post successful!'), $state, $request_url, $request_method, $request_type, $request_options, $response, 'warning');
-
-  //   // Replace [webform:handler] tokens in submission data.
-  //   // Data structured for [webform:handler:remote_post:completed:key] tokens.
-  //   $submission_data = $webform_submission->getData();
-  //   $submission_has_token = (strpos(print_r($submission_data, TRUE), '[webform:handler:' . $this->getHandlerId() . ':') !== FALSE) ? TRUE : FALSE;
-  //   if ($submission_has_token) {
-  //     $response_data = $this->getResponseData($response);
-  //     $token_data = ['webform_handler' => [$this->getHandlerId() => [$state => $response_data]]];
-  //     $submission_data = $this->replaceTokens($submission_data, $webform_submission, $token_data);
-  //     $webform_submission->setData($submission_data);
-  //     // Resave changes to the submission data without invoking any hooks
-  //     // or handlers.
-  //     if ($this->isResultsEnabled()) {
-  //       $webform_submission->resave();
-  //     }
-  //   }
-  // }
 }

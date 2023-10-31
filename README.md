@@ -25,8 +25,4 @@ The format of the token is `[webform:handler:<handler_id>:<state>:<key>]`
 For example `[webform:handler:async_remote_post:completed:confirmation_number]` will get replaced with a "confirmation_number" value from the "Completed URL" url response.
 
 ### Retries
-Currently, if a queued item fails for some reason, it will not be re-queued. So it basically only get's one shot.
-If we decide we want to give them more attempts, this can be done by throwing DelayedRequeueException, which tells the Queue API 
-to requeue the item. However, the inherited remotePost function in AsyncRemotePostWebformHandler does not bubbled up exceptions, it handles
-them quietly and returns. So we need to override that function. This is done already, but commented out.
-
+The `Retry upon failure` handler setting decides if a queued item should be re-queued if it fails.  This setting defaults to no-retry.
