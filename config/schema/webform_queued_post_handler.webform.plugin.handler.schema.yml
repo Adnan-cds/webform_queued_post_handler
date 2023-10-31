@@ -1,0 +1,11 @@
+# Config schema declaration of our async_remote_post handler.
+#
+# @see webform.plugin.handler.schema.yml
+webform.handler.async_remote_post:
+  type: webform.handler.remote_post
+
+  # Extends webform.handler.remote_post
+  mapping:
+    retry_upon_failure:
+      type: boolean
+      label: 'Retry upon failure' 
