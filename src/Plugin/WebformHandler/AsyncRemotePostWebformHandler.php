@@ -53,13 +53,14 @@ class AsyncRemotePostWebformHandler extends RemotePostWebformHandler {
     $config_form['additional']['error_url']['#disabled'] = TRUE;
 
     $config_form['additional']['retry_upon_failure'] = [
-      '#type'          => 'radio',
+      '#type'          => 'checkbox',
       '#title'         => $this->t('Retry upon failure'),
       '#description'   => $this->t('What to do when a remote POST fails.'),
       '#default_value' => $this->configuration['retry_upon_failure'],
+      '#return_value'  => TRUE,
     ];
 
-    return $config_form;
+    return parent::setSettingsParents($config_form);
   }
 
   /**
