@@ -9,3 +9,7 @@ webform.handler.async_remote_post:
     retry_upon_failure:
       type: boolean
       label: 'Retry upon failure' 
+
+    retry_delay:
+      type: integer
+      label: 'Retry delay'

@@ -27,13 +27,15 @@ class AsyncRemotePostWebformHandler extends RemotePostWebformHandler {
    * {@inheritdoc}
    *
    * Alterations:
-   * - Declares the retry_upon_failure settings.
+   * - Declares the retry_upon_failure and retry_delay settings.
    */
   public function defaultConfiguration() {
 
     $default_config = parent::defaultConfiguration();
 
     $default_config['retry_upon_failure'] = FALSE;
+    // Half-an-hour.
+    $default_config['retry_delay'] = 1800;
 
     return $default_config;
   }
@@ -44,7 +46,7 @@ class AsyncRemotePostWebformHandler extends RemotePostWebformHandler {
    * Alterations:
    * - Disables the error URL settings.  An async handler achieves nothing
    *   by redirecting to an error URL.
-   * - Adds settings field for Retry upon failure.
+   * - Adds settings fields for "Retry upon failure" and "Retry delay".
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
 
@@ -58,6 +60,19 @@ class AsyncRemotePostWebformHandler extends RemotePostWebformHandler {
       '#description'   => $this->t('What to do when a remote POST fails.'),
       '#default_value' => $this->configuration['retry_upon_failure'],
       '#return_value'  => TRUE,
+    ];
+
+    $config_form['additional']['retry_delay'] = [
+      '#type'          => 'number',
+      '#title'         => $this->t('Retry delay (seconds)'),
+      '#description'   => $this->t('How long to wait before POSTing again.'),
+      '#default_value' => $this->configuration['retry_delay'],
+      '#min'           => 0,
+      '#states'        => [
+        'visible' => [
+          ':input[name="settings[retry_upon_failure]"]' => ['checked' => TRUE],
+        ],
+      ],
     ];
 
     return parent::setSettingsParents($config_form);
@@ -131,7 +146,7 @@ class AsyncRemotePostWebformHandler extends RemotePostWebformHandler {
     catch (\Exception $e) {
       // This exception will ensure the item is requeued, to try again later.
       // We must override the remotePost method in order to get here though.
-      throw new DelayedRequeueException();
+      throw new DelayedRequeueException($this->configuration['retry_delay']);
     }
   }
 
@@ -151,7 +166,9 @@ class AsyncRemotePostWebformHandler extends RemotePostWebformHandler {
 
     parent::handleError($state, $message, $request_url, $request_method, $request_type, $request_options, $response);
 
-    throw new \Exception();
+    if ($this->configuration['retry_upon_failure']) {
+      throw new \Exception();
+    }
   }
 
 }
